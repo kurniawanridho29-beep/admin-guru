@@ -7,6 +7,8 @@ import zlib
 import pandas as pd
 import streamlit as st
 
+from .config import DEFAULT_IDENTITAS
+
 HEADERS = {
     "identitas": ["Kunci", "Nilai"],
     "siswa": ["Kelas", "No", "Nama", "JK"],
@@ -36,7 +38,13 @@ class Store:
         try:
             if "gcp_service_account" in st.secrets and "spreadsheet_id" in st.secrets:
                 import gspread
-                gc = gspread.service_account_from_dict(dict(st.secrets["gcp_service_account"]))
+                info = dict(st.secrets["gcp_service_account"])
+                info["private_key"] = str(info.get("private_key", "")).replace("\\n", "\n").strip()
+                pk = info["private_key"]
+                if "..." in pk or len(pk) < 1000 or "GANTI" in pk:
+                    raise ValueError(f"private_key tampak belum diisi benar (panjang {len(pk)} karakter; seharusnya sekitar 1700, "
+                                     "tanpa '...' atau 'GANTI')")
+                gc = gspread.service_account_from_dict(info)
                 self.ss = gc.open_by_key(st.secrets["spreadsheet_id"])
                 self.mode = "sheets"
         except Exception as e:  # noqa
@@ -119,7 +127,9 @@ class Store:
     # ---------- helper ----------
     def identity(self):
         df = self.read("identitas")
-        return dict(zip(df["Kunci"], df["Nilai"]))
+        d = dict(DEFAULT_IDENTITAS)
+        d.update({k: v for k, v in zip(df["Kunci"], df["Nilai"]) if str(v).strip()})
+        return d
 
     def save_identity(self, d: dict):
         self.write("identitas", pd.DataFrame({"Kunci": list(d), "Nilai": [str(v) for v in d.values()]}))

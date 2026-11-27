@@ -20,6 +20,9 @@ def run(subject: str):
     cfg = SUBJECTS[subject]
     st.set_page_config(page_title=f"Admin Guru {cfg['singkat']}", page_icon=cfg["ikon"], layout="wide")
     store = get_store(subject)
+    if store.mode != "sheets":      # koneksi gagal tidak boleh tersimpan permanen: coba sambungkan lagi
+        get_store.clear()
+        store = get_store(subject)
     idn = store.identity()
     with st.sidebar:
         st.markdown(f"## {cfg['ikon']} {cfg['singkat']}")
@@ -28,7 +31,7 @@ def run(subject: str):
                 ("Mapel", cfg["nama"]), ("TA", f"{idn.get('tahun_ajaran', '')} • {idn.get('semester', '')}")]
         st.caption("  \n".join(f"{k}: {v}" for k, v in info if v))
         st.divider()
-        menu = st.radio("Menu", list(MENU), label_visibility="collapsed")
+        menu = st.radio("Menu", list(MENU), label_visibility="collapsed", key="menu")
         st.divider()
         st.caption("Penyimpanan: Google Sheets ✅" if store.mode == "sheets" else "Penyimpanan: lokal (sementara) ⚠️")
     if store.mode != "sheets":

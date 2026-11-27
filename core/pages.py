@@ -10,31 +10,112 @@ SEED = "data/siswa_seed.csv"
 
 
 # ------------------------------------------------------------------ Dashboard
+HARI = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"]
+CSS = """<style>
+.hero{background:linear-gradient(135deg,#1e3a8a,#2563eb 60%,#38bdf8);color:#fff;padding:22px 26px;border-radius:16px;margin-bottom:18px}
+.hero h2{margin:0 0 4px 0;color:#fff;font-size:26px}.hero p{margin:0;opacity:.92;font-size:14px}
+.card{border:1px solid rgba(128,128,128,.28);border-radius:14px;padding:14px 16px;background:rgba(128,128,128,.07);height:100%}
+.card .n{font-size:30px;font-weight:700;line-height:1.15}.card .l{opacity:.75;font-size:13px}
+.card .t{font-weight:700;font-size:16px;margin-bottom:4px}
+.pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;margin:3px 4px 0 0;font-weight:600}
+.ph{background:#16a34a2e;color:#22c55e}.pi{background:#2563eb2e;color:#60a5fa}
+.ps{background:#d977062e;color:#fbbf24}.pa{background:#dc26262e;color:#f87171}
+</style>"""
+
+
+def _impor_awal(store):
+    seed = pd.read_csv(SEED, dtype=str)
+    have = set(store.read("siswa")["Kelas"])
+    new = seed[~seed["Kelas"].isin(have)]
+    if not new.empty:
+        store.write("siswa", pd.concat([store.read("siswa"), new], ignore_index=True))
+    return list(new["Kelas"].unique())
+
+
+def _pindah(menu):
+    st.session_state["menu"] = menu
+
+
 def page_dashboard(store, cfg):
-    st.title(f"{cfg['ikon']} Administrasi Guru — {cfg['nama']}")
+    from html import escape
+    from .config import BULAN
+    st.markdown(CSS, unsafe_allow_html=True)
+    idn = store.identity()
+    t = date.today()
+    st.markdown(
+        f'<div class="hero"><h2>Selamat datang, {escape(idn.get("nama", ""))} {cfg["ikon"]}</h2>'
+        f'<p>{escape(cfg["nama"])} • {escape(idn.get("sekolah", ""))}<br>'
+        f'{HARI[t.weekday()]}, {t.day} {BULAN[t.month]} {t.year} • TA {escape(idn.get("tahun_ajaran", ""))} '
+        f'semester {escape(idn.get("semester", ""))}</p></div>', unsafe_allow_html=True)
+
     sis = store.read("siswa")
     if sis.empty:
-        st.info("Data siswa belum ada. Buka **Pengaturan Kelas** lalu klik *Impor data awal*.")
+        st.info("Data siswa belum dimuat. Klik tombol di bawah untuk memuat 93 siswa kelas 7A, 7B, 8, dan 9.")
+        if st.button("⬇️ Muat data siswa awal", type="primary"):
+            _impor_awal(store)
+            st.rerun()
         return
-    cols = st.columns(len(KELAS) + 1)
-    cols[0].metric("Total siswa", len(sis))
-    for c, k in zip(cols[1:], KELAS):
-        c.metric(f"Kelas {k}", int((sis["Kelas"] == k).sum()))
 
     pres = store.read("presensi")
-    today = str(date.today())
-    st.subheader("Presensi hari ini")
+    today = str(t)
+    terisi = sum(1 for k in KELAS if len(pres[(pres["Kelas"] == k) & (pres["Tanggal"] == today)]))
+    persen = round((pres["Status"] == "H").mean() * 100, 1) if len(pres) else None
+
+    def card(n, label):
+        return f'<div class="card"><div class="n">{n}</div><div class="l">{label}</div></div>'
+
+    c = st.columns(4)
+    c[0].markdown(card(len(sis), "Total siswa"), unsafe_allow_html=True)
+    c[1].markdown(card(len(KELAS), "Kelas diampu"), unsafe_allow_html=True)
+    c[2].markdown(card(f"{terisi}/{len(KELAS)}", "Kelas sudah presensi hari ini"), unsafe_allow_html=True)
+    c[3].markdown(card(f"{persen}%" if persen is not None else "—", "Rata-rata kehadiran"), unsafe_allow_html=True)
+
+    st.markdown("#### Pintasan")
+    b = st.columns(4)
+    b[0].button("📝 Isi presensi", on_click=_pindah, args=("📝 Presensi",), width="stretch")
+    b[1].button("📊 Input nilai", on_click=_pindah, args=("📊 Buku Nilai",), width="stretch")
+    b[2].button("📘 Modul ajar", on_click=_pindah, args=("📘 Generate Modul Ajar",), width="stretch")
+    b[3].button("🗓️ Prota & Prosem", on_click=_pindah, args=("🗓️ Prota & Prosem",), width="stretch")
+
+    st.markdown("#### Presensi hari ini")
+    cols = st.columns(len(KELAS))
+    for col, k in zip(cols, KELAS):
+        p = pres[(pres["Kelas"] == k) & (pres["Tanggal"] == today)]
+        n = int((sis["Kelas"] == k).sum())
+        if len(p):
+            pills = "".join(f'<span class="pill p{s.lower()}">{s} {int((p["Status"] == s).sum())}</span>' for s in STATUS)
+            stat = f"✅ sudah diisi<br>{pills}"
+        else:
+            stat = "⏳ belum diisi"
+        col.markdown(f'<div class="card"><div class="t">Kelas {k}</div><div class="l">{n} siswa</div>'
+                     f'<div style="margin-top:8px;font-size:13px">{stat}</div></div>', unsafe_allow_html=True)
+
+    st.markdown("&nbsp;")
+    left, right = st.columns(2)
+    with left:
+        st.markdown("#### Kehadiran per kelas (%)")
+        if len(pres):
+            tot = pres.groupby("Kelas")["Status"].apply(lambda s: round((s == "H").mean() * 100, 1))
+            st.bar_chart(tot.rename("% hadir"))
+        else:
+            st.caption("Belum ada data presensi.")
+    with right:
+        st.markdown("#### Siswa dengan alpha terbanyak")
+        al = pres[pres["Status"] == "A"].groupby(["Kelas", "Nama"]).size().rename("Alpha").reset_index()
+        if len(al):
+            st.dataframe(al.sort_values("Alpha", ascending=False).head(5), hide_index=True, width="stretch")
+        else:
+            st.caption("Belum ada catatan alpha.")
+
+    st.markdown("#### Kelengkapan buku nilai (jumlah kolom nilai)")
+    meta = store.read("meta_kolom")
     rows = []
     for k in KELAS:
-        p = pres[(pres["Kelas"] == k) & (pres["Tanggal"] == today)]
-        rows.append({"Kelas": k, "Status": "✅ sudah diisi" if len(p) else "— belum",
-                     **{STATUS_LABEL[s]: int((p["Status"] == s).sum()) for s in STATUS}})
+        r = {"Kelas": k}
+        for lab, sh in (("Harian", "nilai_harian"), ("Ulangan", "nilai_ulangan"), ("Ujian", "nilai_ujian")):
+            r[lab] = int(((meta["Sheet"] == sh) & (meta["Kelas"] == k)).sum())
+        rows.append(r)
     st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
-
-    if len(pres):
-        st.subheader("Kehadiran keseluruhan")
-        tot = pres.groupby("Kelas")["Status"].apply(lambda s: round((s == "H").mean() * 100, 1))
-        st.bar_chart(tot.rename("% hadir"))
 
 
 # ------------------------------------------------------------------ Pengaturan

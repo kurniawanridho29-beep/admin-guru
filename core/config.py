@@ -35,3 +35,8 @@ KEBIASAAN_7 = [
 
 def tingkat(kelas: str) -> str:
     return str(kelas)[0]
+
+DEFAULT_IDENTITAS = {
+    "nama": "Ridho Kurniawan, S.Pd",
+    "sekolah": "SMP RSUP PKB",
+}
