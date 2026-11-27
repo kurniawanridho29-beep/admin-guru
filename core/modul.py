@@ -169,7 +169,7 @@ def page_modul(store, cfg):
     with tab_gen:
         with st.expander("1 · Identitas modul", expanded=True):
             c1, c2, c3 = st.columns(3)
-            kelas = c1.selectbox("Kelas", KELAS, key="m_kelas")
+            kelas = c1.selectbox("Kelas", KELAS, index=KELAS.index(st.session_state.get("kelas_aktif", KELAS[0])), key="m_kelas")
             bab = c2.text_input("Bab / Tema", key="m_bab")
             semester = c3.selectbox("Semester", ["Genap", "Ganjil"], index=0 if idn.get("semester", "Genap") == "Genap" else 1)
             materi = st.text_area("Materi pokok", height=70, key="m_materi")

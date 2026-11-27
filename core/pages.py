@@ -4,16 +4,21 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-from .config import KELAS, STATUS, STATUS_LABEL
+from .config import BULAN, KELAS, STATUS, STATUS_LABEL
 
 SEED = "data/siswa_seed.csv"
+
+
+def _kelas():
+    return st.session_state.get("kelas_aktif", KELAS[0])
+
 
 
 # ------------------------------------------------------------------ Dashboard
 HARI = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"]
 CSS = """<style>
-.hero{background:linear-gradient(135deg,#1e3a8a,#2563eb 60%,#38bdf8);color:#fff;padding:22px 26px;border-radius:16px;margin-bottom:18px}
-.hero h2{margin:0 0 4px 0;color:#fff;font-size:26px}.hero p{margin:0;opacity:.92;font-size:14px}
+.hero{background:linear-gradient(135deg,#1e3c72,#2a5298);color:#fff;padding:24px 28px;border-radius:14px;margin-bottom:14px}
+.hero h2{margin:0 0 4px 0;color:#fff;font-size:26px}.hero p{margin:0;opacity:.95;font-size:15px}
 .card{border:1px solid rgba(128,128,128,.28);border-radius:14px;padding:14px 16px;background:rgba(128,128,128,.07);height:100%}
 .card .n{font-size:30px;font-weight:700;line-height:1.15}.card .l{opacity:.75;font-size:13px}
 .card .t{font-weight:700;font-size:16px;margin-bottom:4px}
@@ -32,21 +37,9 @@ def _impor_awal(store):
     return list(new["Kelas"].unique())
 
 
-def _pindah(menu):
-    st.session_state["menu"] = menu
-
-
 def page_dashboard(store, cfg):
-    from html import escape
-    from .config import BULAN
     st.markdown(CSS, unsafe_allow_html=True)
-    idn = store.identity()
     t = date.today()
-    st.markdown(
-        f'<div class="hero"><h2>Selamat datang, {escape(idn.get("nama", ""))} {cfg["ikon"]}</h2>'
-        f'<p>{escape(cfg["nama"])} • {escape(idn.get("sekolah", ""))}<br>'
-        f'{HARI[t.weekday()]}, {t.day} {BULAN[t.month]} {t.year} • TA {escape(idn.get("tahun_ajaran", ""))} '
-        f'semester {escape(idn.get("semester", ""))}</p></div>', unsafe_allow_html=True)
 
     sis = store.read("siswa")
     if sis.empty:
@@ -69,13 +62,6 @@ def page_dashboard(store, cfg):
     c[1].markdown(card(len(KELAS), "Kelas diampu"), unsafe_allow_html=True)
     c[2].markdown(card(f"{terisi}/{len(KELAS)}", "Kelas sudah presensi hari ini"), unsafe_allow_html=True)
     c[3].markdown(card(f"{persen}%" if persen is not None else "—", "Rata-rata kehadiran"), unsafe_allow_html=True)
-
-    st.markdown("#### Pintasan")
-    b = st.columns(4)
-    b[0].button("📝 Isi presensi", on_click=_pindah, args=("📝 Presensi",), width="stretch")
-    b[1].button("📊 Input nilai", on_click=_pindah, args=("📊 Buku Nilai",), width="stretch")
-    b[2].button("📘 Modul ajar", on_click=_pindah, args=("📘 Generate Modul Ajar",), width="stretch")
-    b[3].button("🗓️ Prota & Prosem", on_click=_pindah, args=("🗓️ Prota & Prosem",), width="stretch")
 
     st.markdown("#### Presensi hari ini")
     cols = st.columns(len(KELAS))
@@ -120,31 +106,12 @@ def page_dashboard(store, cfg):
 
 # ------------------------------------------------------------------ Pengaturan
 def page_pengaturan(store, cfg):
-    st.header("Pengaturan")
-    t1, t2 = st.tabs(["Identitas", "Data Siswa per Kelas"])
-
-    with t1:
-        idn = store.identity()
-        with st.form("form_identitas"):
-            c1, c2 = st.columns(2)
-            v = {
-                "nama": c1.text_input("Nama guru", idn.get("nama", "")),
-                "nip": c2.text_input("NIP / NUPTK", idn.get("nip", "")),
-                "sekolah": c1.text_input("Nama sekolah", idn.get("sekolah", "")),
-                "kota": c2.text_input("Kota (untuk tanda tangan)", idn.get("kota", "")),
-                "kepsek": c1.text_input("Nama kepala sekolah", idn.get("kepsek", "")),
-                "nip_kepsek": c2.text_input("NIP kepala sekolah", idn.get("nip_kepsek", "")),
-                "tahun_ajaran": c1.text_input("Tahun ajaran", idn.get("tahun_ajaran", "2026/2027")),
-                "semester": c2.selectbox("Semester", ["Ganjil", "Genap"],
-                                         index=1 if idn.get("semester", "Genap") == "Genap" else 0),
-            }
-            if st.form_submit_button("💾 Simpan identitas", type="primary"):
-                store.save_identity(v)
-                st.success("Identitas tersimpan.")
-                st.rerun()
+    st.header("Pengaturan Data Siswa")
+    t2 = st.container()
 
     with t2:
-        kelas = st.selectbox("Kelas", KELAS, key="set_kelas")
+        kelas = _kelas()
+        st.caption(f"Kelas aktif: **{kelas}** (ganti lewat sidebar kiri)")
         df = store.siswa(kelas)[["No", "Nama", "JK"]]
         df["No"] = pd.to_numeric(df["No"], errors="coerce")
         st.caption(f"Jumlah siswa kelas {kelas}: **{len(df)}**. Tambah baris di bagian bawah tabel; "
@@ -182,9 +149,9 @@ def page_presensi(store, cfg):
     t1, t2 = st.tabs(["Isi presensi", "Rekap"])
 
     with t1:
-        c1, c2 = st.columns(2)
-        kelas = c1.selectbox("Kelas", KELAS, key="pres_kelas")
-        tgl = c2.date_input("Tanggal", value=date.today(), key="pres_tgl")
+        kelas = _kelas()
+        st.caption(f"Kelas aktif: **{kelas}** (ganti lewat sidebar kiri)")
+        tgl = st.date_input("Tanggal", value=date.today(), key="pres_tgl")
         roster = store.siswa(kelas)
         if roster.empty:
             st.warning("Belum ada siswa di kelas ini. Isi dulu di Pengaturan Kelas.")
@@ -209,9 +176,13 @@ def page_presensi(store, cfg):
                 st.success(f"Presensi kelas {kelas} tanggal {tgl} tersimpan.")
 
     with t2:
-        kelas = st.selectbox("Kelas", KELAS, key="rek_kelas")
+        kelas = _kelas()
+        bulan = st.session_state.get("bulan_aktif", "Semua bulan")
         pres = store.read("presensi")
         pres = pres[pres["Kelas"] == kelas]
+        if bulan != "Semua bulan":
+            pres = pres[pres["Tanggal"].str[5:7] == f"{BULAN.index(bulan):02d}"]
+        st.caption(f"Rekap kelas **{kelas}** — {bulan}")
         if pres.empty:
             st.info("Belum ada data presensi.")
         else:
@@ -298,7 +269,8 @@ def _nilai_tab(store, label, sheet, kelas):
 
 def page_nilai(store, cfg):
     st.header("Buku Nilai")
-    kelas = st.selectbox("Kelas", KELAS, key="nilai_kelas")
+    kelas = _kelas()
+    st.caption(f"Kelas aktif: **{kelas}** (ganti lewat sidebar kiri)")
     tabs = st.tabs(["Nilai Harian", "Nilai Ulangan", "Nilai Ujian", "Rekap Nilai Akhir"])
     for tab, (label, sheet) in zip(tabs[:3], JENIS.items()):
         with tab:
