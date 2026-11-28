@@ -27,3 +27,9 @@ Tab di Google Sheet dibuat otomatis oleh app. Jangan ubah nama tab/header-nya.
 ## Uji di komputer sendiri
 `pip install -r requirements.txt` lalu `streamlit run app_ips.py` — tanpa secrets, data disimpan di folder
 `data_local/` (hanya untuk uji coba; di streamlit.app folder ini hilang saat restart).
+
+## Struktur tab di Google Sheet (otomatis, satu tab per kelas)
+`Siswa 7A`, `Siswa 7B`, `Siswa 8`, `Siswa 9` · `Presensi 8 Januari 2027` (per kelas per bulan) · `Nilai 8` (per kelas) ·
+`identitas` (pengaturan: jadwal KBM, kategori nilai, dll.) · `modul`, `skema`, `prota`.
+Jangan ubah nama tab/judul kolom. Tab lama dari versi sebelumnya (`siswa`, `presensi`, `nilai_harian`, `nilai_ulangan`,
+`nilai_ujian`, `meta_kolom`) sudah tidak dipakai dan boleh dihapus.

@@ -15,7 +15,7 @@ TABS = [
     ("📊 Buku Nilai", page_nilai),
     ("📘 Generator Modul Ajar", page_modul),
     ("🗓️ Prota & Prosem", page_prota),
-    ("⚙️ Data Siswa", page_pengaturan),
+    ("⚙️ Pengaturan Kelas", page_pengaturan),
 ]
 FIELDS = ("sekolah", "nama", "nip", "tahun_ajaran", "semester", "kota", "kepsek", "nip_kepsek")
 
@@ -56,7 +56,7 @@ def run(subject: str):
         st.markdown("### 🏫 Pengaturan Kelas, Mapel & Bulan")
         st.selectbox("Mata Pelajaran", [cfg["nama"]], disabled=True)
         st.selectbox("Pilih Kelas Aktif", KELAS, key="kelas_aktif", format_func=lambda k: f"Kelas {k}")
-        st.selectbox("Pilih Bulan Presensi", ["Semua bulan"] + BULAN[1:], index=date.today().month, key="bulan_aktif")
+        st.selectbox("Pilih Bulan Presensi", BULAN[1:], index=date.today().month - 1, key="bulan_aktif")
         st.divider()
         st.caption("Penyimpanan: Google Sheets ✅ (tersimpan otomatis)" if store.mode == "sheets"
                    else "Penyimpanan: lokal (sementara) ⚠️")

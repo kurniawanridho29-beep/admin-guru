@@ -40,3 +40,7 @@ DEFAULT_IDENTITAS = {
     "nama": "Ridho Kurniawan, S.Pd",
     "sekolah": "SMP RSUP PKB",
 }
+
+HARI_ABBR = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"]
+HARI_FULL = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"]
+N_NILAI = 15

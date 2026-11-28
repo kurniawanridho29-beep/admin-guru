@@ -215,7 +215,7 @@ def page_modul(store, cfg):
                         metode=metode, media=media, sumber=sumber, dimensi=dimensi or DIMENSI[:3],
                         skema=skema.strip(), n_pg=int(n_pg), n_esai=int(n_es), label_prinsip=label,
                         kebiasaan7=keb7, catatan=catatan.strip(),
-                        jumlah_siswa=int((store.siswa(kelas)["Kelas"] == kelas).sum()) or "")
+                        jumlah_siswa=len(store.siswa(kelas)) or "")
         ok = bool(bab.strip() and materi.strip() and cp.strip())
 
         st.markdown("### Cara membuat modul")
