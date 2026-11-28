@@ -114,3 +114,21 @@ def hitung_nilai(df, hadir, bobot):
     na = ra * (1 - bobot) + h * bobot
     na = na.where(h.notna(), ra).where(ra.notna(), np.nan)
     return h, ra.round(2), na.round(2)
+
+
+NILAI_RE = re.compile(r"^Nilai (\d+)(?: \(.*\))?$")
+
+
+def norm_nilai(df):
+    """'Nilai 2 (Tugas Individu)' di sheet -> 'Nilai 2' di dalam app."""
+    return df.rename(columns={c: f"Nilai {NILAI_RE.match(str(c)).group(1)}" for c in df.columns if NILAI_RE.match(str(c))})
+
+
+def rename_sheet_cols(df, idn, kelas):
+    """'Nilai 2' -> 'Nilai 2 (Tugas Individu)' bila kategori diisi. Nilai 1 dan kolom lain tidak berubah."""
+    m = {}
+    for n in range(2, N_NILAI + 1):
+        k = str(idn.get(f"kat_{kelas}_{n}", "")).strip()
+        if k and f"Nilai {n}" in df.columns:
+            m[f"Nilai {n}"] = f"Nilai {n} ({k})"
+    return df.rename(columns=m)

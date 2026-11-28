@@ -6,7 +6,7 @@ import streamlit as st
 
 from .config import BULAN, HARI_ABBR, HARI_FULL, KELAS, N_NILAI, STATUS, STATUS_LABEL
 from .domain import (NILAI_COLS, SKOR_DEFAULT, URUT, bulan_aktif, date_cols, hitung_nilai, hitung_status, jadwal,
-                     kelas_aktif, num, rekap_semester, skor_kehadiran, tab_nilai, tab_presensi, tahun_bulan,
+                     kelas_aktif, norm_nilai, num, rekap_semester, rename_sheet_cols, skor_kehadiran, tab_nilai, tab_presensi, tahun_bulan,
                      tanggal_cols)
 
 SEED = "data/siswa_seed.csv"
@@ -129,7 +129,7 @@ def page_dashboard(store, cfg):
     st.markdown("#### Kelengkapan buku nilai (kolom Nilai 2–15 yang sudah terisi)")
     rows = []
     for k in KELAS:
-        d = store.read_tab(tab_nilai(k))
+        d = norm_nilai(store.read_tab(tab_nilai(k)))
         terisi = sum(1 for c_ in NILAI_COLS if c_ in d.columns and pd.to_numeric(d[c_], errors="coerce").notna().any())
         rows.append({"Kelas": k, "Kolom terisi": f"{terisi} dari {N_NILAI - 1}", "Siswa": len(sis[k])})
     st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
@@ -274,7 +274,10 @@ def page_nilai(store, cfg):
             d = store.identity()
             d.update({f"kat_{kelas}_{n}": v.strip() for n, v in kat.items()})
             store.save_identity(d)
-            st.success("Kategori tersimpan.")
+            lama = store.read_tab(tab_nilai(kelas))
+            if len(lama):
+                store.write_tab(tab_nilai(kelas), rename_sheet_cols(norm_nilai(lama), d, kelas))
+            st.success("Kategori tersimpan; judul kolom di sheet ikut diperbarui.")
             st.rerun()
 
     with st.expander("⚖️ Pengaturan nilai kehadiran & nilai akhir"):
@@ -299,7 +302,7 @@ def page_nilai(store, cfg):
     name = tab_nilai(kelas)
     sk = f"nilai_{kelas}"
     if sk not in st.session_state:
-        saved = store.read_tab(name)
+        saved = norm_nilai(store.read_tab(name))
         base = roster[["No", "Nama"]].copy()
         base["No"] = pd.to_numeric(base["No"], errors="coerce")
         for cn in NILAI_COLS:
@@ -333,7 +336,7 @@ def page_nilai(store, cfg):
         out.insert(3, "Nilai 1", [hadir.get(n, np.nan) for n in out["Nama"]])
         h2, ra2, na2 = hitung_nilai(out, hadir, bobot_f)
         out["📚 Rata Akademik"], out["📊 Nilai Akhir"] = ra2, na2
-        store.write_tab(name, out)
+        store.write_tab(name, rename_sheet_cols(out, idn, kelas))
         st.session_state[sk] = core
         st.session_state["flash_nilai"] = f"Nilai kelas {kelas} tersimpan ke tab '{name}'."
         st.rerun()
